@@ -227,7 +227,7 @@ init -1500 python:
         def report(self):
             self.logger_write("TOTAL: {total}\nIMAGES: {images}\nSPRITES: {sprites}\nAUDIO: {audio}\nFONTS: {fonts}".format(total=self.modInitializedFiles["total"], images=self.modInitializedFiles["image"], sprites=self.modInitializedFiles["sprite"], audio=self.modInitializedFiles["sound"], fonts=self.modInitializedFiles["font"]))
 
-        def _get_sprite_parts(self, sprite_dir):
+        def _get_sprite_parts(self, sprite_dir, who):
             """Извлекает части спрайта из папки, если не находим тело как часть спрайта - ставим заглушку."""
             parts = {
                 'body': None,
@@ -248,24 +248,39 @@ init -1500 python:
                     elif relative_path == 'clothes':
                         for file_path in files:
                             name_part = os.path.basename(file_path).rsplit('.', 1)[0]
-                            if '_' in name_part:
-                                clothes_name = name_part.split('_', 2)[-1]
+                            # На случай, если имя файла включает в себя:
+                            # а) префикс персонажа
+                            # б) префикс персонажа и номер позы
+                            if name_part.startswith(who + '_'):
+                                parts_list = name_part.split('_')
+                                if len(parts_list) > 2 and parts_list[1].isdigit():
+                                    clothes_name = '_'.join(parts_list[2:])
+                                else:
+                                    clothes_name = '_'.join(parts_list[1:])
                             else:
                                 clothes_name = name_part
                             parts['clothes'].append((clothes_name, file_path))
                     elif relative_path == 'emo':
                         for file_path in files:
                             name_part = os.path.basename(file_path).rsplit('.', 1)[0]
-                            if '_' in name_part:
-                                emo_name = name_part.split('_', 2)[-1]
+                            if name_part.startswith(who + '_'):
+                                parts_list = name_part.split('_')
+                                if len(parts_list) > 2 and parts_list[1].isdigit():
+                                    emo_name = '_'.join(parts_list[2:])
+                                else:
+                                    emo_name = '_'.join(parts_list[1:])
                             else:
                                 emo_name = name_part
                             parts['emo'].append((emo_name, file_path))
                     elif relative_path == 'acc':
                         for file_path in files:
                             name_part = os.path.basename(file_path).rsplit('.', 1)[0]
-                            if '_' in name_part:
-                                acc_name = name_part.split('_', 2)[-1]
+                            if name_part.startswith(who + '_'):
+                                parts_list = name_part.split('_')
+                                if len(parts_list) > 2 and parts_list[1].isdigit():
+                                    acc_name = '_'.join(parts_list[2:])
+                                else:
+                                    acc_name = '_'.join(parts_list[1:])
                             else:
                                 acc_name = name_part
                             parts['acc'].append((acc_name, file_path))
@@ -494,7 +509,7 @@ init -1500 python:
                             processed_sprites.add(sprite_key)
                             sprite_dir = "{}/{}/{}/{}".format(self.modSpritesPath, dist, who, numb)
                             
-                            parts = self._get_sprite_parts(sprite_dir)
+                            parts = self._get_sprite_parts(sprite_dir, who)
                             
                             # Обрабатываем все комбинации
                             self.process_sprite(who, parts['body'], dist)
