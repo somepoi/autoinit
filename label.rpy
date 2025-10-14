@@ -29,6 +29,7 @@ label autoinit_label:
     show fiz_mymod normal far at cleft
     show el_mymod normal pioneer
     show dv_mymod cry swim close at cright
+    show mi2_mymod cry_smile intro at fright
 
     "Спрайты"
 
@@ -36,6 +37,7 @@ label autoinit_label:
     hide el_mymod
     hide dv_mymod
     hide mt_mymod
+    hide mi2_mymod
 
     camera:
         subpixel True perspective True
