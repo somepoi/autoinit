@@ -248,47 +248,51 @@ init -1500 python:
                     elif relative_path == 'clothes':
                         for file_path in files:
                             name_part = os.path.basename(file_path).rsplit('.', 1)[0]
-                            # На случай, если имя файла включает в себя:
-                            # а) префикс персонажа
-                            # б) префикс персонажа и номер позы
-                            if name_part.startswith(who + '_'):
-                                parts_list = name_part.split('_')
-                                if len(parts_list) > 2 and parts_list[1].isdigit():
-                                    clothes_name = '_'.join(parts_list[2:])
-                                else:
-                                    clothes_name = '_'.join(parts_list[1:])
-                            else:
-                                clothes_name = name_part
+                            clothes_name = self._extract_part_name(name_part, who)
                             parts['clothes'].append((clothes_name, file_path))
                     elif relative_path == 'emo':
                         for file_path in files:
                             name_part = os.path.basename(file_path).rsplit('.', 1)[0]
-                            if name_part.startswith(who + '_'):
-                                parts_list = name_part.split('_')
-                                if len(parts_list) > 2 and parts_list[1].isdigit():
-                                    emo_name = '_'.join(parts_list[2:])
-                                else:
-                                    emo_name = '_'.join(parts_list[1:])
-                            else:
-                                emo_name = name_part
+                            emo_name = self._extract_part_name(name_part, who)
                             parts['emo'].append((emo_name, file_path))
                     elif relative_path == 'acc':
                         for file_path in files:
                             name_part = os.path.basename(file_path).rsplit('.', 1)[0]
-                            if name_part.startswith(who + '_'):
-                                parts_list = name_part.split('_')
-                                if len(parts_list) > 2 and parts_list[1].isdigit():
-                                    acc_name = '_'.join(parts_list[2:])
-                                else:
-                                    acc_name = '_'.join(parts_list[1:])
-                            else:
-                                acc_name = name_part
+                            acc_name = self._extract_part_name(name_part, who)
                             parts['acc'].append((acc_name, file_path))
             
             if not parts['body']:
                 parts['body'] = 'im.Alpha("images/misc/soviet_games.png", 0.0)'
             
             return parts
+
+        def _extract_part_name(self, name_part, who):
+            """
+            Извлекает имя части спрайта (эмоции/одежды/аксессуара) из имени файла.
+            Прощаем ошибки, если у нас мододел дал, например, эмоции имя sl_1_smile.webp (а не sl3_1_smile.webp или smile.webp) для спрайта sl3, а не sl 
+            
+            :param name_part: str - имя файла без расширения
+            :param who: str - имя спрайта
+            :return: str - извлечённое имя части
+            """
+            # Если имя файла начинается с префикса персонажа
+            if '_' in name_part:
+                parts_list = name_part.split('_')
+                
+                # Проверяем точное совпадение с who (например, sl3_1_smile)
+                if parts_list[0] == who:
+                    # Если второй элемент - цифра (номер позы), берём всё после неё
+                    if len(parts_list) > 2 and parts_list[1].isdigit():
+                        return '_'.join(parts_list[2:])
+                    else:
+                        return '_'.join(parts_list[1:]) # Иначе берём всё после имени персонажа
+                # Если первая часть не совпадает с who, но содержит подчёркивания
+                # Проверяем, не проёб ли это с именем файла (не совпадает имя самого спрайта и имя спрайта в имени файла)
+                elif len(parts_list) >= 3 and parts_list[1].isdigit():
+                    return '_'.join(parts_list[2:])
+            
+            # Если не подошёл ни один формат, возвращаем как есть
+            return name_part
 
         def build_sprite(self, composite_size, body_expr, extra_layer_paths):
             """

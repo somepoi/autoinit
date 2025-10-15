@@ -27,6 +27,7 @@ label autoinit_label:
 
     show mt_mymod normal intro jewelry at fleft
     show fiz_mymod normal far at cleft
+    show sl3_mymod smile pioneer at left
     show el_mymod normal pioneer
     show dv_mymod cry swim close at cright
     show mi2_mymod cry_smile intro at fright
@@ -38,6 +39,7 @@ label autoinit_label:
     hide dv_mymod
     hide mt_mymod
     hide mi2_mymod
+    hide sl3_mymod
 
     camera:
         subpixel True perspective True
