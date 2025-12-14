@@ -67,15 +67,15 @@ init -1500 python:
             self.modPath = self.find_mod_path()
             self.modImagesPath = self.modPath + "/" + self.NAMES["IMAGES_FOLDER"]
             self.modSpritesPath = self.modImagesPath + "/" + self.NAMES["SPRITES_FOLDER"]
-            self.modAssetsPath = "game/" + self.modPath + "/" + self.NAMES["ASSETS"] + ".rpy" 
+            self.modAssetsPath = self.find_assets_path()
             self.modLoggerPath = self.modID + self.NAMES["LOGGER"] + ".txt"
-
-            self.modDist = self.process_distances()
 
             self.check_class_name()
             self.check_duplicate()
 
             self.logger_create()
+            
+            self.modDist = self.process_distances()
 
             self.initialize()
 
@@ -121,6 +121,40 @@ init -1500 python:
                 self.error("Could not find mod path for modID: {}\n{}".format(modID, e))
                 return None
 
+        def find_assets_path(self):
+            try:
+                assets_filename = self.NAMES["ASSETS"] + ".rpy"
+                for dir_path, files in self.modFiles.items():
+                    for file_path in files:
+                        if file_path.endswith(assets_filename) and self.modPath in file_path:
+                            return file_path
+                # Если файл не найден, возвращаем путь для создания
+                return self.modPath + "/" + assets_filename
+            except Exception as e:
+                self.error("Could not find assets path: {}".format(e))
+                return None
+
+        def assets_file_exists(self):
+            try:
+                assets_filename = self.NAMES["ASSETS"] + ".rpy"
+                for dir_path, files in self.modFiles.items():
+                    for file_path in files:
+                        if file_path.endswith(assets_filename) and self.modPath in file_path:
+                            return True
+                return False
+            except Exception as e:
+                self.error("Error checking assets file existence: {}".format(e))
+                return False
+
+        def get_real_path(self, renpy_path):
+            """Преобразует виртуальный путь Ren'Py в реальный путь файловой системы."""
+            try:
+                base_path = renpy.config.basedir
+                return os.path.join(base_path, renpy_path.replace("/", os.sep))
+            except Exception as e:
+                self.error("Error converting path to real path: {}".format(e))
+                return None
+
         def process_distances(self):
             """
             Строит названия дистанций по именам внутри sprites (для normal дистанции имя будет "", как в самом БЛ), ищет первое изображение в каждой из папок с дистанциями, получает размер изображения и добавляет в словарь
@@ -146,7 +180,11 @@ init -1500 python:
                                 if file_path.endswith(self.EXTENSIONS["IMAGE"]):
                                     try:
                                         image_size = renpy.image_size(file_path)
-                                        folder_names[distance_name] = (distance_name if distance_name != "normal" else "", image_size)
+                                        distance_value = distance_name if distance_name != "normal" else ""
+                                        folder_names[distance_name] = (distance_value, image_size)
+                                        
+                                        rel_path_mod = self.get_rel_path(file_path, self.modPath)
+                                        self.logger_write("{} - {} - {}x{}".format(rel_path_mod, distance_name, image_size[0], image_size[1]))
                                         break
                                     except:
                                         continue
@@ -215,6 +253,7 @@ init -1500 python:
             renpy.error(self.modID.upper() + " AUTOINITIALIZATION ERROR: {}".format(txt))
 
         def timer(func):
+
             """Таймер для замера скоростки отработки функций"""
             def wrapper(self, *args, **kwargs):
                 start = time.time()
@@ -540,7 +579,8 @@ init -1500 python:
             Если write_into_file равно True, вместо инициализации записывает ресурсы мода в отдельный файл. Для дальнейшей инициализации ресурсов мода из файла необходимо перезагрузить БЛ.
             """
             if self.write_into_file:
-                with builtins.open(self.modAssetsPath, "w") as log_file:
+                real_assets_path = self.get_real_path(self.modAssetsPath)
+                with builtins.open(real_assets_path, "w") as log_file:
                     log_file.write("init -1499:\n    ")
                     for type, file_name, file in self.modReadyToInitFiles:
                         self.modInitializedFiles[type] += 1
@@ -575,7 +615,7 @@ init -1500 python:
             """
             Инициализация ресурсов мода и запись создания объекта класса, если не имеем уже созданный файл с объявлёнными ресурсами мода.
             """
-            if not os.path.exists(self.modAssetsPath):
+            if not self.assets_file_exists():
                 if self.initialize_audio:
                     self.process_audio()
                 if self.initialize_fonts:
