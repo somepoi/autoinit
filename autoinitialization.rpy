@@ -249,12 +249,12 @@ init -1500 python:
         #endregion
 
         def error(self, txt):
-            """Вызываем трейсбек с названием мода и уведомлении о ошибке с автоинитом"""
+            """Вызываем трейсбек с названием мода и уведомлением об ошибке с автоинитом"""
             renpy.error(self.modID.upper() + " AUTOINITIALIZATION ERROR: {}".format(txt))
 
         def timer(func):
 
-            """Таймер для замера скоростки отработки функций"""
+            """Таймер для замера скорости отработки функции"""
             def wrapper(self, *args, **kwargs):
                 start = time.time()
                 result = func(self, *args, **kwargs)
@@ -616,12 +616,12 @@ init -1500 python:
             Инициализация ресурсов мода и запись создания объекта класса, если не имеем уже созданный файл с объявлёнными ресурсами мода.
             """
             if not self.assets_file_exists():
-                if self.initialize_audio:
-                    self.process_audio()
-                if self.initialize_fonts:
-                    self.process_fonts()
                 if self.initialize_images:
                     self.process_images()
                 if self.initialize_sprites:
                     self.process_sprites()
+                if self.initialize_audio:
+                    self.process_audio()
+                if self.initialize_fonts:
+                    self.process_fonts()
                 self.process_files()
