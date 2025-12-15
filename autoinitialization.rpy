@@ -149,7 +149,7 @@ init -1500 python:
         def get_real_path(self, renpy_path):
             """Преобразует виртуальный путь Ren'Py в реальный путь файловой системы."""
             try:
-                base_path = renpy.config.basedir
+                base_path = renpy.config.basedir + "\\" + "game" + "\\"
                 return os.path.join(base_path, renpy_path.replace("/", os.sep))
             except Exception as e:
                 self.error("Error converting path to real path: {}".format(e))
