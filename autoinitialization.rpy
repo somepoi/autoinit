@@ -56,21 +56,32 @@ init -1500 python:
             
             self.modFiles = self.cache_mod_files()
             self.modReadyToInitFiles = []
+            self.modInitializedFiles = {
+                "image": 0,
+                "sprite": 0,
+                "sound": 0,
+                "font": 0,
+                "total": 0,
+            }
             
             self.modPath = self.find_mod_path()
             self.modImagesPath = self.modPath + "/" + self.NAMES["IMAGES_FOLDER"]
             self.modSpritesPath = self.modImagesPath + "/" + self.NAMES["SPRITES_FOLDER"]
-            self.modAssetsPath = "game/" + self.modPath + "/" + self.NAMES["ASSETS"] + ".rpy" 
+            self.modAssetsPath = self.find_assets_path()
             self.modLoggerPath = self.modID + self.NAMES["LOGGER"] + ".txt"
-
-            self.modDist = self.process_distances()
 
             self.check_class_name()
             self.check_duplicate()
 
             self.logger_create()
+            
+            self.modDist = self.process_distances()
 
             self.initialize()
+
+            self.report()
+
+            self.record_instance()
         
         #region Работа с путями
         def get_rel_path(self, dir_path, path):
@@ -110,6 +121,40 @@ init -1500 python:
                 self.error("Could not find mod path for modID: {}\n{}".format(modID, e))
                 return None
 
+        def find_assets_path(self):
+            try:
+                assets_filename = self.NAMES["ASSETS"] + ".rpy"
+                for dir_path, files in self.modFiles.items():
+                    for file_path in files:
+                        if file_path.endswith(assets_filename) and self.modPath in file_path:
+                            return file_path
+                # Если файл не найден, возвращаем путь для создания
+                return self.modPath + "/" + assets_filename
+            except Exception as e:
+                self.error("Could not find assets path: {}".format(e))
+                return None
+
+        def assets_file_exists(self):
+            try:
+                assets_filename = self.NAMES["ASSETS"] + ".rpy"
+                for dir_path, files in self.modFiles.items():
+                    for file_path in files:
+                        if file_path.endswith(assets_filename) and self.modPath in file_path:
+                            return True
+                return False
+            except Exception as e:
+                self.error("Error checking assets file existence: {}".format(e))
+                return False
+
+        def get_real_path(self, renpy_path):
+            """Преобразует виртуальный путь Ren'Py в реальный путь файловой системы."""
+            try:
+                base_path = renpy.config.basedir + "\\" + "game" + "\\"
+                return os.path.join(base_path, renpy_path.replace("/", os.sep))
+            except Exception as e:
+                self.error("Error converting path to real path: {}".format(e))
+                return None
+
         def process_distances(self):
             """
             Строит названия дистанций по именам внутри sprites (для normal дистанции имя будет "", как в самом БЛ), ищет первое изображение в каждой из папок с дистанциями, получает размер изображения и добавляет в словарь
@@ -135,7 +180,11 @@ init -1500 python:
                                 if file_path.endswith(self.EXTENSIONS["IMAGE"]):
                                     try:
                                         image_size = renpy.image_size(file_path)
-                                        folder_names[distance_name] = (distance_name if distance_name != "normal" else "", image_size)
+                                        distance_value = distance_name if distance_name != "normal" else ""
+                                        folder_names[distance_name] = (distance_value, image_size)
+                                        
+                                        rel_path_mod = self.get_rel_path(file_path, self.modPath)
+                                        self.logger_write("{} - {} - {}x{}".format(rel_path_mod, distance_name, image_size[0], image_size[1]))
                                         break
                                     except:
                                         continue
@@ -194,26 +243,30 @@ init -1500 python:
             if renpy.windows:
                 try:
                     with builtins.open(self.modLoggerPath, "a+") as logger:
-                        logger.write(txt + "\n")
+                        logger.write(str(txt) + "\n")
                 except Exception as e:
                     self.error("Error while trying to write into logger: {}".format(e))
         #endregion
 
         def error(self, txt):
-            """Вызываем трейсбек с названием мода и уведомлении о ошибке с автоинитом"""
+            """Вызываем трейсбек с названием мода и уведомлением об ошибке с автоинитом"""
             renpy.error(self.modID.upper() + " AUTOINITIALIZATION ERROR: {}".format(txt))
 
         def timer(func):
-            """Таймер для замера скоростки отработки функций"""
+
+            """Таймер для замера скорости отработки функции"""
             def wrapper(self, *args, **kwargs):
                 start = time.time()
                 result = func(self, *args, **kwargs)
                 end = time.time()
-                self.logger_write("{} took {:.2f} seconds".format(func.__name__, end - start))
+                self.logger_write("{} took {:.4f} seconds".format(func.__name__, end - start))
                 return result
             return wrapper
+        
+        def report(self):
+            self.logger_write("TOTAL: {total}\nIMAGES: {images}\nSPRITES: {sprites}\nAUDIO: {audio}\nFONTS: {fonts}".format(total=self.modInitializedFiles["total"], images=self.modInitializedFiles["image"], sprites=self.modInitializedFiles["sprite"], audio=self.modInitializedFiles["sound"], fonts=self.modInitializedFiles["font"]))
 
-        def _get_sprite_parts(self, sprite_dir):
+        def _get_sprite_parts(self, sprite_dir, who):
             """Извлекает части спрайта из папки, если не находим тело как часть спрайта - ставим заглушку."""
             parts = {
                 'body': None,
@@ -234,32 +287,51 @@ init -1500 python:
                     elif relative_path == 'clothes':
                         for file_path in files:
                             name_part = os.path.basename(file_path).rsplit('.', 1)[0]
-                            if '_' in name_part:
-                                clothes_name = name_part.split('_', 2)[-1]
-                            else:
-                                clothes_name = name_part
+                            clothes_name = self._extract_part_name(name_part, who)
                             parts['clothes'].append((clothes_name, file_path))
                     elif relative_path == 'emo':
                         for file_path in files:
                             name_part = os.path.basename(file_path).rsplit('.', 1)[0]
-                            if '_' in name_part:
-                                emo_name = name_part.split('_', 2)[-1]
-                            else:
-                                emo_name = name_part
+                            emo_name = self._extract_part_name(name_part, who)
                             parts['emo'].append((emo_name, file_path))
                     elif relative_path == 'acc':
                         for file_path in files:
                             name_part = os.path.basename(file_path).rsplit('.', 1)[0]
-                            if '_' in name_part:
-                                acc_name = name_part.split('_', 2)[-1]
-                            else:
-                                acc_name = name_part
+                            acc_name = self._extract_part_name(name_part, who)
                             parts['acc'].append((acc_name, file_path))
             
             if not parts['body']:
                 parts['body'] = 'im.Alpha("images/misc/soviet_games.png", 0.0)'
             
             return parts
+
+        def _extract_part_name(self, name_part, who):
+            """
+            Извлекает имя части спрайта (эмоции/одежды/аксессуара) из имени файла.
+            Прощаем ошибки, если у нас мододел дал, например, эмоции имя sl_1_smile.webp (а не sl3_1_smile.webp или smile.webp) для спрайта sl3, а не sl 
+            
+            :param name_part: str - имя файла без расширения
+            :param who: str - имя спрайта
+            :return: str - извлечённое имя части
+            """
+            # Если имя файла начинается с префикса персонажа
+            if '_' in name_part:
+                parts_list = name_part.split('_')
+                
+                # Проверяем точное совпадение с who (например, sl3_1_smile)
+                if parts_list[0] == who:
+                    # Если второй элемент - цифра (номер позы), берём всё после неё
+                    if len(parts_list) > 2 and parts_list[1].isdigit():
+                        return '_'.join(parts_list[2:])
+                    else:
+                        return '_'.join(parts_list[1:]) # Иначе берём всё после имени персонажа
+                # Если первая часть не совпадает с who, но содержит подчёркивания
+                # Проверяем, не проёб ли это с именем файла (не совпадает имя самого спрайта и имя спрайта в имени файла)
+                elif len(parts_list) >= 3 and parts_list[1].isdigit():
+                    return '_'.join(parts_list[2:])
+            
+            # Если не подошёл ни один формат, возвращаем как есть
+            return name_part
 
         def build_sprite(self, composite_size, body_expr, extra_layer_paths):
             """
@@ -480,7 +552,7 @@ init -1500 python:
                             processed_sprites.add(sprite_key)
                             sprite_dir = "{}/{}/{}/{}".format(self.modSpritesPath, dist, who, numb)
                             
-                            parts = self._get_sprite_parts(sprite_dir)
+                            parts = self._get_sprite_parts(sprite_dir, who)
                             
                             # Обрабатываем все комбинации
                             self.process_sprite(who, parts['body'], dist)
@@ -507,9 +579,12 @@ init -1500 python:
             Если write_into_file равно True, вместо инициализации записывает ресурсы мода в отдельный файл. Для дальнейшей инициализации ресурсов мода из файла необходимо перезагрузить БЛ.
             """
             if self.write_into_file:
-                with builtins.open(self.modAssetsPath, "w") as log_file:
+                real_assets_path = self.get_real_path(self.modAssetsPath)
+                with builtins.open(real_assets_path, "w") as log_file:
                     log_file.write("init -1499:\n    ")
                     for type, file_name, file in self.modReadyToInitFiles:
+                        self.modInitializedFiles[type] += 1
+                        self.modInitializedFiles["total"] += 1
                         if type == "sound":
                             log_file.write("$ %s = \"%s\"\n    " % (file_name, file))
                         elif type == "font":
@@ -521,6 +596,8 @@ init -1500 python:
             else:
                 for type, file_name, file in self.modReadyToInitFiles:
                     try:
+                        self.modInitializedFiles[type] += 1
+                        self.modInitializedFiles["total"] += 1
                         if type == "sound":
                             setattr(store, file_name, file)
                         elif type == "font":
@@ -538,14 +615,13 @@ init -1500 python:
             """
             Инициализация ресурсов мода и запись создания объекта класса, если не имеем уже созданный файл с объявлёнными ресурсами мода.
             """
-            if not os.path.exists(self.modAssetsPath):
-                if self.initialize_audio:
-                    self.process_audio()
-                if self.initialize_fonts:
-                    self.process_fonts()
+            if not self.assets_file_exists():
                 if self.initialize_images:
                     self.process_images()
                 if self.initialize_sprites:
                     self.process_sprites()
+                if self.initialize_audio:
+                    self.process_audio()
+                if self.initialize_fonts:
+                    self.process_fonts()
                 self.process_files()
-            self.record_instance()
