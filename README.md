@@ -73,6 +73,8 @@ init:
     $ AutoInit_mymod()
 ```
 
+Пример правильного подключения можно запустить, перейдя на лейбл `autoinit_example` с помощью [консоли RenPy](https://www.renpy.org/doc/html/developer_tools.html),  используя `jump autoinit_example`.
+
 ### Использование инициализированных ресурсов
 
 #### Изображения

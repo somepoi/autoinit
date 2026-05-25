@@ -4,16 +4,19 @@ init python:
         modPostfix = "mymod"
 
 init:
-    $ mods["autoinit_label"] = "Авто инит"
+    # Не забудьте объявить свой мод
+    # $ mods["autoinit_example"] = "Авто инит"
     $ AutoInit_autoinit()
 
-label autoinit_label:
+label autoinit_example:
+
+    scene black
 
     $ persistent.sprite_time = "day"
 
     "Авто инит"
 
-    play music init_music_mymod
+    play music music_mymod
 
     "Звук"
 
@@ -28,6 +31,7 @@ label autoinit_label:
     "БГ в папке"
 
     show bg subfolder insidesubbg_mymod
+
     "Вложенный БГ"
 
     show mt_mymod normal intro jewelry at fleft
@@ -48,6 +52,7 @@ label autoinit_label:
 
     camera:
         subpixel True perspective True
+
     show mt_mymod normal as mt:
         subpixel True zpos -477.0 pos (-0.33, -279)
     show mt_mymod normal jewelry as mt2:
@@ -65,18 +70,22 @@ label autoinit_label:
         subpixel True zpos -477.0 pos (0.33, 486) 
     show mt_mymod intro jewelry as mt8:
         subpixel True zpos -477.0 pos (0.68, 486) 
+
     "Комбинации спрайтов"
 
     $ sunset_time()
     $ persistent.sprite_time = "sunset"
+
     "Вечер"
 
     $ night_time()
     $ persistent.sprite_time = "night"
+
     "Ночь"
 
     $ day_time()
     $ persistent.sprite_time = "day"
+
     "День"
 
     return
