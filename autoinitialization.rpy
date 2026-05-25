@@ -4,7 +4,7 @@ init -1500 python:
     import os
     import json
 
-    class autoInitialization_autoinit:
+    class AutoInit_autoinit:
         """
         Класс для автоматической инициализации ресурсов мода (изображения, спрайты, аудио, шрифты).
         Сканирует структуру папок, инициализирует ресурсы мода.

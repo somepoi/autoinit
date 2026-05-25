@@ -1,6 +1,6 @@
 init:
     $ mods["autoinit_label"] = "Авто инит"
-    $ autoinitialization_autoinit = autoInitialization_autoinit("autoinit", "mymod")
+    $ autoinit_autoinit = AutoInit_autoinit("autoinit", "mymod")
 
 label autoinit_label:
 
