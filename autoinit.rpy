@@ -39,7 +39,7 @@ init -1500 python:
 
         def __init__(self):
             if not self.modID:
-                renpy.error("AUTOINITIALIZATION ERROR: subclass must define `modID` class attribute (mod root folder name).")
+                renpy.error("AUTOINIT ERROR: subclass must define `modID` class attribute (mod root folder name).")
 
             self.modPostfix = ("_" + self.modPostfix if self.modPostfix else "")
 
@@ -245,7 +245,7 @@ init -1500 python:
             if renpy.windows:
                 try:
                     with builtins.open(self.modLoggerPath, "w+") as logger:
-                        logger.write(self.modID.upper() + " AUTOINITIALIZATION\n")
+                        logger.write(self.modID.upper() + " AUTOINIT\n")
                 except Exception as e:
                     self.error("Error while trying to create logger: {}".format(e))
 
@@ -260,7 +260,7 @@ init -1500 python:
 
         def error(self, txt):
             """Вызываем трейсбек с названием мода и уведомлением об ошибке с автоинитом"""
-            renpy.error(self.modID.upper() + " AUTOINITIALIZATION ERROR: {}".format(txt))
+            renpy.error(self.modID.upper() + " AUTOINIT ERROR: {}".format(txt))
 
         def timer(func):
             """Таймер для замера скорости отработки функции"""
