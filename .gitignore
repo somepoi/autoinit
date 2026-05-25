@@ -1,4 +1,4 @@
 *.rpyc
 .vscode/
 *.bak
-autoinit_assets.*
+autoinit_cache.*
