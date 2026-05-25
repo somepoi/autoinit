@@ -4,55 +4,44 @@ init -1500 python:
     import os
     import json
 
-    class AutoInit_autoinit:
+    class AutoInit:
         """
-        Класс для автоматической инициализации ресурсов мода (изображения, спрайты, аудио, шрифты).
+        Базовый класс автоинициализации ресурсов мода (изображения, спрайты, аудио, шрифты).
         Сканирует структуру папок, инициализирует ресурсы мода.
 
         При первом запуске делает полный скан и сохраняет результат в autoinit_cache.json.
-        При следующих запусках, если файлы мода не изменились, загружает данные из кэша, без
-        повторного скана и без перезапуска игры.
+        При последующих запусках, если количество файлов мода не изменилось, загружает данные
+        из кэша, без повторного скана и без перезапуска игры.
         """
 
-        def __init__(self, modID, modPostfix="", initialize_images=True, initialize_sprites=True, initialize_audio=True, initialize_fonts=True):
-            """
-            :param modID: str
-                имя корневой папки мода (обязательно)
-            :param modPostfix: str, optional, :default value: ""
-                постфикс к именам ресурсов (опционально)
-            :param initialize_images: boolean, optional, :default value: True
-                включить обработку обычных изображений (по умолчанию True)
-            :param initialize_sprites: boolean, optional, :default value: True
-                включить обработку спрайтов (по умолчанию True)
-            :param initialize_audio: boolean, optional, :default value: True
-                включить обработку аудио (по умолчанию True)
-            :param initialize_fonts: boolean, optional, :default value: True
-                включить обработку шрифтов (по умолчанию True)
-            """
+        modID = None
+        modPostfix = ""
+        initialize_images = True
+        initialize_sprites = True
+        initialize_audio = True
+        initialize_fonts = True
 
-            self.modID = modID
-            self.modPostfix = ("_" + modPostfix if modPostfix else "")
+        EXTENSIONS = {
+            "IMAGE": ('.png', '.jpg', '.jpeg', '.webp', '.gif'),
+            "AUDIO": (".wav", ".mp2", ".mp3", ".ogg", ".opus"),
+            "FONT": (".ttf", ".otf"),
+        }
+        NAMES = {
+            "IMAGES_FOLDER": "images",
+            "SPRITES_FOLDER": "sprites",
+            "CACHE": "autoinit_cache",
+            "LOGGER": "Logger",
+        }
+        SPRITE_TINTS = {
+            "sunset": "TintMatrix(Color(hls=(0.94, 0.82, 1.0)))",
+            "night": "TintMatrix(Color(hls=(0.63, 0.78, 0.82)))",
+        }
 
-            self.EXTENSIONS = {
-                "IMAGE": ('.png', '.jpg', '.jpeg', '.webp', '.gif'),
-                "AUDIO": (".wav", ".mp2", ".mp3", ".ogg", ".opus"),
-                "FONT": (".ttf", ".otf")
-            }
-            self.NAMES = {
-                "IMAGES_FOLDER": "images",
-                "SPRITES_FOLDER": "sprites",
-                "CACHE": "autoinit_cache",
-                "LOGGER": "Logger"
-            }
-            self.SPRITE_TINTS = {
-                "sunset": "TintMatrix(Color(hls=(0.94, 0.82, 1.0)))",
-                "night": "TintMatrix(Color(hls=(0.63, 0.78, 0.82)))"
-            }
+        def __init__(self):
+            if not self.modID:
+                renpy.error("AUTOINITIALIZATION ERROR: subclass must define `modID` class attribute (mod root folder name).")
 
-            self.initialize_images = initialize_images
-            self.initialize_sprites = initialize_sprites
-            self.initialize_audio = initialize_audio
-            self.initialize_fonts = initialize_fonts
+            self.modPostfix = ("_" + self.modPostfix if self.modPostfix else "")
 
             self.modFiles = self.cache_mod_files()
             self.modReadyToInitFiles = []
@@ -71,9 +60,6 @@ init -1500 python:
             self.modCachePath = self.modPath + "/" + self.NAMES["CACHE"] + ".json"
             self.modLoggerPath = self.modID + self.NAMES["LOGGER"] + ".txt"
 
-            self.check_class_name()
-            self.check_duplicate()
-
             self.logger_create()
 
             self._tint_matrices = {}
@@ -87,7 +73,6 @@ init -1500 python:
                 self._save_cache()
 
             self.report()
-            self.record_instance()
 
         #region Работа с путями
         def get_rel_path(self, dir_path, path):
@@ -253,42 +238,6 @@ init -1500 python:
                     self.error("Failed to restore cached {} '{}': {}".format(t, name, e))
 
             return True
-        #endregion
-
-        #region Проверки на дубликаты и ошибки
-        def check_duplicate(self):
-            """Проверяем на дублированием класса/объекта класса с таким же именем"""
-            try:
-                registry = getattr(store, "_autoinit_registry", None)
-                if registry is None:
-                    registry = {"class_name_to_class_obj": {}, "initialized_class_names": set()}
-                    setattr(store, "_autoinit_registry", registry)
-
-                class_name = self.__class__.__name__
-
-                if class_name in registry.get("initialized_class_names", set()):
-                    self.error("Instance of '{}' already exists. Rename the class (change postfix).".format(class_name))
-
-                existing_cls = registry.get("class_name_to_class_obj", {}).get(class_name)
-                if existing_cls is not None and existing_cls is not self.__class__:
-                    self.error("Duplicate class name '{}' detected from another file. Rename the class postfix to include your mod folder name.".format(class_name))
-
-                registry["class_name_to_class_obj"][class_name] = self.__class__
-            except Exception as e:
-                self.error("Duplicate check failed: {}".format(e))
-
-        def check_class_name(self):
-            if not(self.__class__.__name__.endswith(self.modID) or self.__class__.__name__.startswith(self.modID)):
-                self.error("The auto-initialization class name ({}) must be unique and contain the mod root folder name".format(self.__class__.__name__))
-
-        def record_instance(self):
-            """Помечаем успешное создание объекта класса, чтобы запретить повторные инстансы того же имени"""
-            try:
-                registry = getattr(store, "_autoinit_registry", None)
-                if registry is not None:
-                    registry.setdefault("initialized_class_names", set()).add(self.__class__.__name__)
-            except Exception as e:
-                self.error("Failed to record instance creation: {}".format(e))
         #endregion
 
         #region Логгер

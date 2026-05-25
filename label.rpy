@@ -1,6 +1,11 @@
+init python:
+    class AutoInit_autoinit(AutoInit):
+        modID = "autoinit"
+        modPostfix = "mymod"
+
 init:
     $ mods["autoinit_label"] = "Авто инит"
-    $ autoinit_autoinit = AutoInit_autoinit("autoinit", "mymod")
+    $ AutoInit_autoinit()
 
 label autoinit_label:
 
