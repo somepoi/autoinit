@@ -33,8 +33,8 @@ init -1500 python:
             "LOGGER": "Logger",
         }
         SPRITE_TINTS = {
-            "sunset": "TintMatrix(Color(hls=(0.94, 0.82, 1.0)))",
-            "night": "TintMatrix(Color(hls=(0.63, 0.78, 0.82)))",
+            "sunset": TintMatrix(Color(hls=(0.94, 0.82, 1.0))),
+            "night":  TintMatrix(Color(hls=(0.63, 0.78, 0.82)))
         }
 
         def __init__(self):
@@ -62,8 +62,7 @@ init -1500 python:
 
             self.logger_create()
 
-            self._tint_matrices = {}
-            self._init_tint_matrices()
+            self._tint_matrices = self.SPRITE_TINTS
 
             if self._try_init_from_cache():
                 self.logger_write("Initialized from cache.")
@@ -274,18 +273,6 @@ init -1500 python:
 
         def report(self):
             self.logger_write("TOTAL: {total}\nIMAGES: {images}\nSPRITES: {sprites}\nAUDIO: {audio}\nFONTS: {fonts}".format(total=self.modInitializedFiles["total"], images=self.modInitializedFiles["image"], sprites=self.modInitializedFiles["sprite"], audio=self.modInitializedFiles["sound"], fonts=self.modInitializedFiles["font"]))
-
-        #region Тинты
-        def _init_tint_matrices(self):
-            """
-            Предвычисляем объекты матриц тинтов, чтобы не спамить eval() на каждый спрайт.
-            """
-            for name, expr in self.SPRITE_TINTS.items():
-                try:
-                    self._tint_matrices[name] = eval(expr)
-                except Exception as e:
-                    self.error("Failed to compute tint matrix '{}': {}".format(name, e))
-        #endregion
 
         def _get_sprite_parts(self, sprite_dir, who):
             """Извлекает части спрайта из папки, если не находим тело как часть спрайта - ставим заглушку."""
