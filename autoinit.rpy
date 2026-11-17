@@ -3,6 +3,7 @@ init -1500 python in autoinit_store:
     import builtins
     import os
     import json
+    import hashlib
 
     # workaround для работы внутри именованного кастомного store
     store = renpy.store
@@ -18,7 +19,7 @@ init -1500 python in autoinit_store:
         Сканирует структуру папок, инициализирует ресурсы мода.
 
         При первом запуске делает полный скан и сохраняет результат в autoinit_cache.json.
-        При последующих запусках, если количество файлов мода не изменилось, загружает данные
+        Если количество файлов и пути к ресурсам не изменились, загружает данные
         из кэша, без повторного скана и без перезапуска игры.
         """
 
@@ -52,6 +53,7 @@ init -1500 python in autoinit_store:
             self.modPostfix = ("_" + self.modPostfix if self.modPostfix else "")
 
             self.modFiles = self.cache_mod_files()
+            self._asset_paths_hash = self._get_asset_paths_hash()
             self.modReadyToInitFiles = []
             self._sprite_cache_data = {}  # имя спрайта -> {body, layers, dist} для сохранения в кэш
             self.modInitializedFiles = {
@@ -134,6 +136,13 @@ init -1500 python in autoinit_store:
             """Общее количество файлов мода, нужно для инвалидации кэша."""
             return sum(len(v) for v in self.modFiles.values())
 
+        def _get_asset_paths_hash(self):
+            """Учитывает переименования и переносы, при которых число файлов не меняется."""
+            extensions = tuple(ext for kind in ("IMAGE", "AUDIO", "FONT") for ext in self.EXTENSIONS[kind])
+            paths = sorted(path for files in self.modFiles.values() for path in files
+                           if path.endswith(extensions))
+            return hashlib.sha256(json.dumps(paths, ensure_ascii=True).encode("ascii")).hexdigest()
+
         def process_distances(self):
             """
             Строит названия дистанций по именам внутри sprites (для normal дистанции имя будет "", как в самом БЛ), ищет первое изображение в каждой из папок с дистанциями, получает размер изображения и добавляет в словарь
@@ -180,7 +189,8 @@ init -1500 python in autoinit_store:
             try:
                 with builtins.open(cache_path, "rb") as f:
                     data = json.load(f)
-                if data.get("file_count") == self._get_file_count():
+                if (data.get("file_count") == self._get_file_count()
+                        and data.get("asset_paths_hash") == self._asset_paths_hash):
                     return data
             except:
                 pass
@@ -207,6 +217,7 @@ init -1500 python in autoinit_store:
 
                 data = {
                     "file_count": int(self._get_file_count()),
+                    "asset_paths_hash": self._asset_paths_hash,
                     "distances": {k: [str(v[0]), [int(v[1][0]), int(v[1][1])]] for k, v in self.modDist.items()},
                     "assets": assets
                 }
